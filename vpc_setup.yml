@@ -65,7 +65,7 @@
         map_public: yes
         resource_tags:
           Name: vprofile-pubsub4
-      register: pubsub4_out
+      register: prisub1_out
 
     - name: Create Private Subnet 2 in Zone2
       ec2_vpc_subnet:
@@ -77,7 +77,7 @@
         map_public: yes
         resource_tags:
           Name: vprofile-pubsub5
-      register: pubsub5_out
+      register: prisub2_out
 
     - name: Create Private Subnet 3 in Zone3
       ec2_vpc_subnet:
@@ -89,7 +89,7 @@
         map_public: yes
         resource_tags:
           Name: vprofile-pubsub6
-      register: pubsub6_out
+      register: prisub3_out
 
     - name: Internet Gateway Setup 
       ec2_vpc_igw:
@@ -101,16 +101,61 @@
       register: igw_out
     
     - name: Setup Public Subnet Route Table
-    ec2_vpc_route_table:
-      vpc_id: "{{vpcout.vpc.id}}"
-      region: "{{region}}"
-      tags: 
-        Name: vprofile-pubRT
-      subnets:
-        - "{{pubsub1_out.id}}"
-        - "{{pubsub2_out.id}}"
-        - "{{pubsub3_out.id}}"
-      routes:
-        - dest: 0.0.0.0/0
-          gateway_id: "igw_out.gateway.id"
-    register: pubRT_out
+      ec2_vpc_route_table:
+        vpc_id: "{{vpcout.vpc.id}}"
+        region: "{{region}}"
+        tags: 
+          Name: vprofile-pubRT
+        subnets:
+          - "{{pubsub1_out.subnet.id}}"
+          - "{{pubsub2_out.subnet.id}}"
+          - "{{pubsub3_out.subnet.id}}"
+        routes:
+          - dest: 0.0.0.0/0
+            gateway_id: "{{igw_out.gateway_id}}"
+      register: pubRT_out
+
+    - name: Create new nat gateway with client token.
+      ec2_vpc_nat_gateway:
+        state: "{{state}}"
+        subnet_id: "{{pubsub1_out.subnet.id}}"
+        wait: yes
+        region: "{{region}}"
+        if_exist_do_not_create: true
+      register: NATGW_out
+
+    - name: Setup Private Subnet Route Table
+      ec2_vpc_route_table:
+        vpc_id: "{{vpcout.vpc.id}}"
+        region: "{{region}}"
+        tags: 
+          Name: vprofile-priRT
+        subnets:
+          - "{{prisub1_out.subnet.id}}"
+          - "{{prisub2_out.subnet.id}}"
+          - "{{prisub3_out.subnet.id}}"
+        routes:
+          - dest: 0.0.0.0/0
+            gateway_id: "{{NATGW_out.nat_gateway_id}}"
+      register: privRT_out
+
+    - debug:
+        var: "{{item}}"
+      loop:
+        - vpcout.vpc.id
+        - prisub1_out.subnet.id
+        - prisub2_out.subnet.id
+        - prisub3_out.subnet.id
+        - pubsub1_out.subnet.id
+        - pubsub2_out.subnet.id
+        - pubsub3_out.subnet.id
+        - NATGW_out.nat_gateway_id
+        - igw_out.gateway_id
+        - privRT_out.route_table.id
+        - pubRT_out.route_table.id
+
+    - name: Create variables file for vpc output
+      copy:
+        content: "vpcid: {{ vpcout.vpc.id }}\nprisub1: {{ prisub1_out.subnet.id }}\nprisub2: {{ prisub2_out.subnet.id }}\nprisub3: {{ prisub3_out.subnet.id }}\npubsub1: {{ pubsub1_out.subnet.id }}\npubsub2: {{ pubsub2_out.subnet.id }}\npubsub3: {{ pubsub3_out.subnet.id }}\nNATWid: {{ NATGW_out.nat_gateway_id }}\nigwid: {{ igw_out.gateway_id }}\nprivRTid: {{ privRT_out.route_table.id }}"
+        dest: vars/output_vars
+

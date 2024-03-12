@@ -1,0 +1,10 @@
+vpcid: vpc-06fedbf0fefc0bd31
+prisub1: subnet-03a459479dbe24dac
+prisub2: subnet-0bc1955ebbbd34a1c
+prisub3: subnet-018ad37ca8ef72d7b
+pubsub1: subnet-00f3e55b95ad4d4a8
+pubsub2: subnet-073fa2d639e62ebdc
+pubsub3: subnet-07e804bb2d38af325
+NATWid: nat-02b08fe180966031e
+igwid: igw-020f1a41698c945ed
+privRTid: rtb-0ad6a875aa13c6e87
